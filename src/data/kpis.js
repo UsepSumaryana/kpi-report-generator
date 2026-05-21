@@ -1,31 +1,3 @@
-export const KPIS = [
-  {
-    id: 1,
-    title: 'Kode Sesuai Design & Update Issue Git',
-    desc: 'Pastikan kode yang diimplementasikan sesuai dengan design yang telah disepakati dan 100% terdokumentasi (update) di issue Git terkait.',
-  },
-  {
-    id: 2,
-    title: 'Implementasi AI / Vibe Coding Sesuai Standar',
-    desc: 'Implementasi menggunakan AI (vibe coding) harus mengikuti standar repository yang telah ditetapkan, termasuk struktur kode dan konvensi penamaan.',
-  },
-  {
-    id: 3,
-    title: 'Commit, Push, Branch & Pre-commit Sesuai Standar',
-    desc: 'Semua aktivitas Git (commit message, nama branch, pre-commit hook) harus sesuai dengan standar yang berlaku di repository.',
-  },
-  {
-    id: 4,
-    title: 'Kode Lolos SonarQube Tanpa Blocker/Critical',
-    desc: 'Hasil pemindaian SonarQube tidak boleh mengandung issue dengan severity blocker atau critical.',
-  },
-  {
-    id: 5,
-    title: 'Unit Testing Berjalan & Overdue Maksimal 2 Hari',
-    desc: 'Unit test harus berjalan sesuai kebutuhan. Jika ada overdue, maksimal keterlambatan adalah 2 hari.',
-  },
-]
-
 export const STATUS_OPTIONS = [
   { value: '', label: 'Pilih status…' },
   { value: 'tercapai', label: '✅ Tercapai', emoji: '✅' },
@@ -34,8 +6,23 @@ export const STATUS_OPTIONS = [
   { value: 'na', label: '➖ Tidak Berlaku', emoji: '➖' },
 ]
 
-export const AI_MOCK = {
-  1: {
+const DEFAULT_MOCK = {
+  clarify: 'Untuk mengevaluasi poin ini, saya butuh konteks tambahan:',
+  questions: [
+    'Apa konteks atau tools yang digunakan?',
+    'Apa bukti pendukung (commit, screenshot, link issue)?',
+    'Apa kendala atau deviasi yang ditemui?',
+  ],
+  result: {
+    status: 'tercapai',
+    catatan:
+      'Berdasarkan konteks dan jawaban yang diberikan, poin ini dievaluasi tercapai. Detail spesifik dapat dilengkapi pada mode manual.',
+    evidence: 'Konteks + jawaban user.',
+  },
+}
+
+const AI_MOCK_BY_TITLE = {
+  'Kode Sesuai Design & Update Issue Git': {
     clarify: 'Halo! Untuk mengevaluasi poin ini, saya perlu informasi lebih detail. Bisakah Anda sebutkan:',
     questions: [
       'Design spesifik apa yang digunakan (misalnya, Figma, dokumen PRD, atau issue Git)?',
@@ -50,7 +37,7 @@ export const AI_MOCK = {
       evidence: 'Issue Git terkait telah di-update dengan status selesai dan komentar implementasi.',
     },
   },
-  2: {
+  'Implementasi AI / Vibe Coding Sesuai Standar': {
     clarify: 'Untuk menilai vibe coding, saya butuh konteks tambahan:',
     questions: [
       'Tool AI apa yang digunakan (Copilot, Claude, Cursor, dll)?',
@@ -65,7 +52,7 @@ export const AI_MOCK = {
       evidence: 'Commit message menyebutkan AI-assisted, dan PR template terisi lengkap.',
     },
   },
-  3: {
+  'Commit, Push, Branch & Pre-commit Sesuai Standar': {
     clarify: 'Untuk evaluasi standar Git workflow:',
     questions: [
       'Format commit message apa yang dipakai (Conventional Commits, dll)?',
@@ -79,7 +66,7 @@ export const AI_MOCK = {
       evidence: 'Hasil audit commit history minggu ini: 18 dari 20 commit sesuai standar.',
     },
   },
-  4: {
+  'Kode Lolos SonarQube Tanpa Blocker/Critical': {
     clarify: 'Untuk memverifikasi hasil SonarQube:',
     questions: [
       'Project key di SonarQube?',
@@ -93,7 +80,7 @@ export const AI_MOCK = {
       evidence: 'Dashboard SonarQube: link screenshot, scan ID 4421.',
     },
   },
-  5: {
+  'Unit Testing Berjalan & Overdue Maksimal 2 Hari': {
     clarify: 'Untuk evaluasi unit testing:',
     questions: [
       'Coverage threshold yang ditargetkan?',
@@ -107,4 +94,8 @@ export const AI_MOCK = {
       evidence: 'Pipeline CI log + test report bulan ini.',
     },
   },
+}
+
+export function getAiMock(kpi) {
+  return AI_MOCK_BY_TITLE[kpi?.title] || DEFAULT_MOCK
 }

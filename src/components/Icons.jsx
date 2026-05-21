@@ -120,6 +120,11 @@ export const Ico = {
       <line x1="15" y1="3" x2="15" y2="21" />
     </svg>
   ),
+  ChevronDown: ({ size = 14, ...p }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...stroke} {...p}>
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  ),
   GitLab: ({ size = 14, ...p }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" {...p}>
       <path

@@ -1,9 +1,9 @@
-import { KPIS, STATUS_OPTIONS } from '../data/kpis.js'
+import { STATUS_OPTIONS } from '../data/kpis.js'
 import { buildMarkdown } from '../utils/buildMarkdown.js'
 import { Ico } from './Icons.jsx'
 
-export function Preview({ tab, setTab, formState, onClose, onCopy, onDownload, onPostGitlab }) {
-  const md = buildMarkdown(formState)
+export function Preview({ tab, setTab, parent, subKpis, formState, onClose, onCopy, onDownload, onPostGitlab }) {
+  const md = buildMarkdown(parent, subKpis, formState)
 
   return (
     <aside className="preview">
@@ -31,45 +31,55 @@ export function Preview({ tab, setTab, formState, onClose, onCopy, onDownload, o
           </button>
         </div>
       </div>
-      <div className="preview-body">{tab === 'preview' ? <DocView formState={formState} /> : <RawView md={md} />}</div>
+      <div className="preview-body">
+        {tab === 'preview' ? (
+          <DocView parent={parent} subKpis={subKpis} formState={formState} />
+        ) : (
+          <RawView md={md} />
+        )}
+      </div>
     </aside>
   )
 }
 
-function DocView({ formState }) {
+function DocView({ parent, subKpis, formState }) {
   const today = new Date()
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
   const dateStr = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`
+  const heading = parent ? parent.title : 'Laporan KPI'
 
   return (
     <div className="doc">
       <h1>
-        📊 Laporan KPI <span className="date">— {dateStr}</span>
+        📊 {heading} <span className="date">— {dateStr}</span>
       </h1>
+      {parent?.desc && <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{parent.desc}</p>}
       <hr />
-      <h2>Ringkasan KPI</h2>
+      <h2>Ringkasan Sub KPI</h2>
+      {!parent && <p className="empty-note">Belum ada KPI yang dipilih.</p>}
+      {parent && subKpis.length === 0 && <p className="empty-note">Belum ada sub KPI.</p>}
       <ul>
-        {KPIS.map((k) => {
+        {subKpis.map((k, i) => {
           const checked = !!(formState[k.id] && formState[k.id].status)
           return (
             <li key={k.id}>
               <input type="checkbox" checked={checked} readOnly />
               <span>
-                {k.id}. {k.title}
+                {i + 1}. {k.title}
               </span>
             </li>
           )
         })}
       </ul>
-      <h2>Detail KPI</h2>
-      {KPIS.map((k) => {
+      {subKpis.length > 0 && <h2>Detail Sub KPI</h2>}
+      {subKpis.map((k, i) => {
         const s = formState[k.id] || {}
         const hasContent = s.status || s.catatan || s.evidence
         const opt = STATUS_OPTIONS.find((o) => o.value === s.status)
         return (
           <div className="kpi-detail" key={k.id}>
             <h3>
-              {k.id}. {k.title}
+              {i + 1}. {k.title}
             </h3>
             {!hasContent && <p className="empty-note">Belum diisi.</p>}
             {s.status && (

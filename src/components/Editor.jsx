@@ -1,8 +1,57 @@
-import { KPIS, STATUS_OPTIONS, AI_MOCK } from '../data/kpis.js'
+import { STATUS_OPTIONS, getAiMock } from '../data/kpis.js'
 import { Ico } from './Icons.jsx'
 import { Attachments } from './Attachments.jsx'
 
-export function Editor({ kpi, state, setState, onNav, navInfo, onToast }) {
+export function Editor({
+  sub,
+  subKpis,
+  parent,
+  state,
+  setState,
+  onNav,
+  navInfo,
+  onToast,
+  onAddFirstParent,
+  onAddFirstSub,
+}) {
+  if (!parent) {
+    return (
+      <div className="editor">
+        <div className="editor-inner editor-empty">
+          <div className="empty-mark">
+            <Ico.Bar size={28} />
+          </div>
+          <h1 className="editor-title">Belum ada KPI</h1>
+          <p className="editor-desc">
+            Tambahkan KPI pertama Anda untuk mulai. Setiap KPI bisa berisi banyak sub KPI yang dievaluasi terpisah.
+          </p>
+          <button className="btn btn-primary" style={{ height: 40, padding: '0 18px' }} onClick={onAddFirstParent}>
+            <Ico.Sparkle size={14} /> Tambah KPI Pertama
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!sub) {
+    return (
+      <div className="editor">
+        <div className="editor-inner editor-empty">
+          <div className="empty-mark">
+            <Ico.Doc size={28} />
+          </div>
+          <h1 className="editor-title">Belum ada sub KPI</h1>
+          <p className="editor-desc">
+            KPI <strong>{parent.title}</strong> belum memiliki sub KPI. Tambahkan poin-poin yang ingin dievaluasi.
+          </p>
+          <button className="btn btn-primary" style={{ height: 40, padding: '0 18px' }} onClick={onAddFirstSub}>
+            <Ico.Sparkle size={14} /> Tambah Sub KPI Pertama
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const mode = state.mode || 'manual'
   const aiStage = state.aiStage || 'idle'
   const setMode = (m) => setState({ ...state, mode: m })
@@ -17,7 +66,7 @@ export function Editor({ kpi, state, setState, onNav, navInfo, onToast }) {
   const submitAnswer = () => {
     setState({ ...state, aiStage: 'thinking2' })
     setTimeout(() => {
-      const mock = AI_MOCK[kpi.id] || AI_MOCK[1]
+      const mock = getAiMock(sub)
       setState((prev) => ({
         ...(prev || state),
         aiStage: 'done',
@@ -38,16 +87,17 @@ export function Editor({ kpi, state, setState, onNav, navInfo, onToast }) {
     onToast('Pindah ke mode Manual untuk revisi')
   }
 
-  const ai = AI_MOCK[kpi.id] || AI_MOCK[1]
+  const ai = getAiMock(sub)
+  const idx = subKpis.findIndex((k) => k.id === sub.id)
 
   return (
     <div className="editor">
       <div className="editor-inner">
         <div className="editor-eyebrow">
           <span className="num">
-            KPI {kpi.id} / {KPIS.length}
+            Sub KPI {idx + 1} / {subKpis.length}
           </span>
-          <span>Form Penilaian</span>
+          <span>· {parent.title}</span>
           <span style={{ flex: 1 }}></span>
           <div className="mode-switch" role="tablist">
             <button className={mode === 'manual' ? 'active' : ''} onClick={() => setMode('manual')}>
@@ -64,8 +114,8 @@ export function Editor({ kpi, state, setState, onNav, navInfo, onToast }) {
             </button>
           </div>
         </div>
-        <h1 className="editor-title">{kpi.title}</h1>
-        <p className="editor-desc">{kpi.desc}</p>
+        <h1 className="editor-title">{sub.title}</h1>
+        {sub.desc && <p className="editor-desc">{sub.desc}</p>}
 
         {mode === 'manual' && (
           <ManualForm
@@ -77,7 +127,6 @@ export function Editor({ kpi, state, setState, onNav, navInfo, onToast }) {
 
         {mode === 'ai' && (
           <AIFlow
-            kpi={kpi}
             state={state}
             ai={ai}
             aiStage={aiStage}
@@ -90,11 +139,7 @@ export function Editor({ kpi, state, setState, onNav, navInfo, onToast }) {
         )}
 
         <div className="editor-nav">
-          <button
-            className="editor-nav-btn"
-            disabled={!navInfo.prev}
-            onClick={() => onNav(navInfo.prev?.id)}
-          >
+          <button className="editor-nav-btn" disabled={!navInfo.prev} onClick={() => onNav(navInfo.prev?.id)}>
             <Ico.ArrowLeft size={14} />
             <div className="meta">
               <span>Sebelumnya</span>
@@ -160,7 +205,7 @@ function ManualForm({ state, setField, onAttachments }) {
   )
 }
 
-function AIFlow({ kpi, state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, revise }) {
+function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, revise }) {
   const setField = (k, v) => setState({ ...state, [k]: v })
 
   return (
