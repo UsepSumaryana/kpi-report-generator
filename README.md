@@ -1,3 +1,6 @@
+<img width="1916" height="972" alt="image" src="https://github.com/user-attachments/assets/4b6f4e16-c60e-4770-bee9-bbf0f84944d6" />
+
+
 # KPI Report Generator
 
 Local-first KPI evaluation app that produces a Markdown report. Built with Vite + React; data lives in an in-browser SQLite database (sql.js + IndexedDB), so nothing is sent to a server.
