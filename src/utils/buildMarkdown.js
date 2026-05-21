@@ -1,6 +1,6 @@
 import { STATUS_OPTIONS } from '../data/kpis.js'
 
-export function buildMarkdown(parent, subKpis, formState) {
+export function buildMarkdown(parent, subKpis, formState, renderAttachment) {
   const today = new Date()
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
   const dateStr = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`
@@ -31,7 +31,12 @@ export function buildMarkdown(parent, subKpis, formState) {
       md += `**Evidence/Lampiran:** ${s.evidence}\n\n`
     }
     if (s.attachments && s.attachments.length) {
-      md += `**Attachment:** ${s.attachments.map((a) => a.name).join(', ')}\n\n`
+      if (renderAttachment) {
+        const rendered = s.attachments.map(renderAttachment).filter(Boolean).join('\n\n')
+        if (rendered) md += `**Lampiran:**\n\n${rendered}\n\n`
+      } else {
+        md += `**Attachment:** ${s.attachments.map((a) => a.name).join(', ')}\n\n`
+      }
     }
     if (!s.status && !s.catatan && !s.evidence) {
       md += `_Belum diisi._\n\n`

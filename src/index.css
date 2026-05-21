@@ -14,10 +14,10 @@
   --text-subtle: oklch(0.62 0.01 60);
 
   /* Accents — magenta family */
-  --accent: oklch(0.60 0.225 358);
-  --accent-hover: oklch(0.54 0.225 358);
-  --accent-soft: oklch(0.96 0.04 358);
-  --accent-soft-border: oklch(0.88 0.10 358);
+  --accent: oklch(51.148% 0.17413 28.641);
+  --accent-hover: oklch(52.736% 0.21305 29.745);
+  --accent-soft: oklch(85.62% 0.0547 36.609);
+  --accent-soft-border: oklch(53.066% 0.13957 41.555);
   --accent-fg: oklch(0.99 0 0);
 
   /* Status colors */
@@ -60,10 +60,10 @@ html[data-theme="dark"] {
   --text-muted: oklch(0.70 0.010 60);
   --text-subtle: oklch(0.55 0.010 60);
 
-  --accent: oklch(0.70 0.220 358);
-  --accent-hover: oklch(0.76 0.220 358);
-  --accent-soft: oklch(0.30 0.10 358);
-  --accent-soft-border: oklch(0.40 0.15 358);
+  --accent: oklch(72.102% 0.17616 35.349);
+  --accent-hover: oklch(72.552% 0.17 28.281);
+  --accent-soft: oklch(31.607% 0.07848 39.135);
+  --accent-soft-border: oklch(42.561% 0.11671 41.287);
 
   --success: oklch(0.74 0.16 150);
   --success-soft: oklch(0.28 0.08 150);

@@ -418,7 +418,20 @@ export default function App() {
           onDbReplaced={handleDbReplaced}
         />
       )}
-      {showGitlab && <GitlabPostModal onClose={() => setShowGitlab(false)} onToast={showToast} />}
+      {showGitlab && (
+        <GitlabPostModal
+          onClose={() => setShowGitlab(false)}
+          onToast={showToast}
+          parent={activeParent}
+          subKpis={subKpis}
+          formState={formState}
+          settings={settings}
+          onOpenSettings={() => {
+            setShowGitlab(false)
+            setShowSettings(true)
+          }}
+        />
+      )}
 
       {showManageParents && (
         <ManageKpisModal
