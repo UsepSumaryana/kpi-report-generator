@@ -1,4 +1,5 @@
-import { STATUS_OPTIONS, getAiMock } from '../data/kpis.js'
+import { STATUS_OPTIONS } from '../data/kpis.js'
+import { analyzeContext, finalizeContext } from '../utils/ai.js'
 import { Ico } from './Icons.jsx'
 import { Attachments } from './Attachments.jsx'
 
@@ -13,6 +14,7 @@ export function Editor({
   onToast,
   onAddFirstParent,
   onAddFirstSub,
+  apiKey,
 }) {
   if (!parent) {
     return (
@@ -56,38 +58,65 @@ export function Editor({
   const aiStage = state.aiStage || 'idle'
   const setMode = (m) => setState({ ...state, mode: m })
 
-  const askAI = () => {
+  const runAI = async () => {
+    const context = (state.context || '').trim()
+    if (!context) return
+
     setState({ ...state, aiStage: 'thinking' })
-    setTimeout(() => {
-      setState((prev) => ({ ...(prev || state), aiStage: 'clarify' }))
-    }, 1100)
+    try {
+      const result = await analyzeContext(context, sub.title, apiKey)
+      if (result.stage === 'clarify') {
+        setState((prev) => ({
+          ...(prev || state),
+          aiStage: 'clarify',
+          aiQuestions: result.questions,
+        }))
+      } else {
+        setState((prev) => ({
+          ...(prev || state),
+          aiStage: 'done',
+          status: result.status,
+          catatan: result.summary,
+          evidence: result.evidence || prev?.evidence || '',
+        }))
+        onToast('Evaluasi AI berhasil dibuat')
+      }
+    } catch (err) {
+      setState((prev) => ({ ...(prev || state), aiStage: 'context', aiError: err.message }))
+      onToast(`AI error: ${err.message}`)
+    }
   }
 
-  const submitAnswer = () => {
+  const submitAnswer = async () => {
+    const answer = (state.aiAnswer || '').trim()
+    if (!answer) return
+
     setState({ ...state, aiStage: 'thinking2' })
-    setTimeout(() => {
-      const mock = getAiMock(sub)
+    try {
+      const answers = answer.split('\n').filter(Boolean)
+      const result = await finalizeContext(state.context, answers, sub.title, apiKey)
       setState((prev) => ({
         ...(prev || state),
         aiStage: 'done',
-        status: mock.result.status,
-        catatan: mock.result.catatan,
-        evidence: mock.result.evidence,
+        status: result.status,
+        catatan: result.summary,
+        evidence: result.evidence || prev?.evidence || '',
       }))
-      onToast('AI berhasil mengisi jawaban')
-    }, 1400)
+      onToast('Evaluasi AI berhasil dibuat')
+    } catch (err) {
+      setState((prev) => ({ ...(prev || state), aiStage: 'clarify', aiError: err.message }))
+      onToast(`AI error: ${err.message}`)
+    }
   }
 
   const reaskAI = () => {
-    setState({ ...state, aiStage: 'context', aiAnswer: '' })
+    setState({ ...state, aiStage: 'context', aiError: null, aiQuestions: null, aiAnswer: '' })
   }
 
   const revise = () => {
     setState({ ...state, mode: 'manual', aiStage: 'idle' })
     onToast('Pindah ke mode Manual untuk revisi')
   }
-
-  const ai = getAiMock(sub)
   const idx = subKpis.findIndex((k) => k.id === sub.id)
 
   return (
@@ -128,10 +157,9 @@ export function Editor({
         {mode === 'ai' && (
           <AIFlow
             state={state}
-            ai={ai}
             aiStage={aiStage}
             setState={setState}
-            askAI={askAI}
+            runAI={runAI}
             submitAnswer={submitAnswer}
             reaskAI={reaskAI}
             revise={revise}
@@ -205,22 +233,30 @@ function ManualForm({ state, setField, onAttachments }) {
   )
 }
 
-function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, revise }) {
+function AIFlow({ state, aiStage, setState, runAI, submitAnswer, reaskAI, revise }) {
   const setField = (k, v) => setState({ ...state, [k]: v })
 
   return (
     <>
       {(aiStage === 'idle' || aiStage === 'context') && (
         <>
+          {state.aiError && (
+            <div className="ai-callout" style={{ borderColor: 'var(--danger)', background: 'var(--danger-bg)' }}>
+              <div className="ai-callout-header" style={{ color: 'var(--danger)' }}>
+                <Ico.X size={14} /> Error
+              </div>
+              <div className="ai-callout-body">{state.aiError}</div>
+            </div>
+          )}
           <div className="field">
             <label className="field-label">
               Konteks Tambahan
-              <span className="hint">opsional</span>
+              <span className="hint">wajib</span>
             </label>
             <textarea
               className="textarea mono"
               style={{ minHeight: 110 }}
-              placeholder={`Berikan konteks tambahan untuk AI, misalnya:\n- Fitur yang dikerjakan: login page dengan SSO\n- Kendala: 3 retry pada integrasi API\n- Referensi: commit abc123, issue #42`}
+              placeholder={`Berikan konteks untuk dievaluasi AI, misalnya:\n- Fitur yang dikerjakan: login page dengan SSO\n- Kendala: 3 retry pada integrasi API\n- Referensi: commit abc123, issue #42\n- Target yang dicapai: semua test case lolos`}
               value={state.context || ''}
               onChange={(e) => setField('context', e.target.value)}
             />
@@ -228,9 +264,10 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
           <button
             className="btn btn-primary"
             style={{ width: '100%', height: 42, justifyContent: 'center', fontWeight: 600 }}
-            onClick={askAI}
+            onClick={runAI}
+            disabled={!(state.context || '').trim()}
           >
-            <Ico.Sparkle size={14} /> Generate dengan AI
+            <Ico.Sparkle size={14} /> Evaluasi dengan AI
           </button>
         </>
       )}
@@ -241,7 +278,7 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
             <Ico.Sparkle size={14} /> AI sedang menganalisis…
           </div>
           <div className="ai-thinking">
-            <span>Memproses konteks dan menyiapkan pertanyaan klarifikasi</span>
+            <span>Meninjau konteks dan menyusun evaluasi</span>
             <span className="ai-dots">
               <span></span>
               <span></span>
@@ -253,14 +290,21 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
 
       {aiStage === 'clarify' && (
         <>
+          {state.aiError && (
+            <div className="ai-callout" style={{ borderColor: 'var(--danger)', background: 'var(--danger-bg)' }}>
+              <div className="ai-callout-header" style={{ color: 'var(--danger)' }}>
+                <Ico.X size={14} /> Error
+              </div>
+              <div className="ai-callout-body">{state.aiError}</div>
+            </div>
+          )}
           <div className="ai-callout">
             <div className="ai-callout-header">
               <Ico.Help size={14} /> AI butuh klarifikasi:
             </div>
             <div className="ai-callout-body">
-              {ai.clarify}
               <ul>
-                {ai.questions.map((q, i) => (
+                {(state.aiQuestions || []).map((q, i) => (
                   <li key={i}>{q}</li>
                 ))}
               </ul>
@@ -273,7 +317,7 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
             </label>
             <textarea
               className="textarea"
-              placeholder="Tulis jawaban untuk pertanyaan AI di atas…"
+              placeholder="Jawab setiap pertanyaan di atas (pisahkan dengan baris baru)…"
               style={{ minHeight: 110 }}
               value={state.aiAnswer || ''}
               onChange={(e) => setField('aiAnswer', e.target.value)}
@@ -298,7 +342,7 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
               <Ico.Send size={13} /> Kirim Jawaban
             </button>
             <button className="btn" style={{ height: 38 }} onClick={reaskAI}>
-              <Ico.Refresh size={13} /> Tanya Ulang
+              <Ico.Refresh size={13} /> Ulangi Konteks
             </button>
           </div>
         </>
@@ -307,10 +351,10 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
       {aiStage === 'thinking2' && (
         <div className="ai-callout">
           <div className="ai-callout-header">
-            <Ico.Sparkle size={14} /> AI menyusun jawaban…
+            <Ico.Sparkle size={14} /> AI menyusun laporan…
           </div>
           <div className="ai-thinking">
-            <span>Menggabungkan konteks + jawaban Anda</span>
+            <span>Menggabungkan konteks + jawaban klarifikasi</span>
             <span className="ai-dots">
               <span></span>
               <span></span>
@@ -324,38 +368,34 @@ function AIFlow({ state, ai, aiStage, setState, askAI, submitAnswer, reaskAI, re
         <div className="ai-result">
           <div className="ai-result-head">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <Ico.Check size={14} /> Hasil AI
+              <Ico.Check size={14} /> Hasil Evaluasi AI
             </span>
             <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>
-              Live — otomatis diterapkan
+              Otomatis diterapkan — siap untuk atasan
             </span>
           </div>
           <div className="ai-result-row">
             <div className="k">Status</div>
-            <div className="v">{STATUS_OPTIONS.find((o) => o.value === state.status)?.label}</div>
+            <div className="v" style={{ fontWeight: 600 }}>
+              {STATUS_OPTIONS.find((o) => o.value === state.status)?.label || state.status}
+            </div>
           </div>
           <div className="ai-result-row">
-            <div className="k">Catatan</div>
-            <div className="v">{state.catatan}</div>
+            <div className="k">Laporan</div>
+            <div className="v" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{state.catatan}</div>
           </div>
-          <div className="ai-result-row">
-            <div className="k">Evidence</div>
-            <div className="v">{state.evidence}</div>
-          </div>
+          {state.evidence && (
+            <div className="ai-result-row">
+              <div className="k">Lampiran / Link</div>
+              <div className="v" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{state.evidence}</div>
+            </div>
+          )}
           <div className="ai-result-actions">
             <button className="btn" onClick={revise}>
-              <Ico.Pencil size={13} /> Revisi
+              <Ico.Pencil size={13} /> Revisi Manual
             </button>
-            <button
-              className="btn"
-              onClick={() => {
-                setState({ ...state, aiStage: 'thinking2', aiAnswer: '' })
-                setTimeout(() => {
-                  setState((prev) => ({ ...(prev || state), aiStage: 'clarify' }))
-                }, 900)
-              }}
-            >
-              <Ico.Refresh size={13} /> Generate Ulang
+            <button className="btn" onClick={reaskAI}>
+              <Ico.Refresh size={13} /> Evaluasi Ulang
             </button>
           </div>
         </div>

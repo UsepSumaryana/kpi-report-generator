@@ -389,6 +389,7 @@ export default function App() {
         onNav={(id) => setActiveSubId(id)}
         navInfo={navInfo}
         onToast={showToast}
+        apiKey={settings.aiKey}
         onAddFirstParent={() => {
           setShowManageParents(true)
         }}
