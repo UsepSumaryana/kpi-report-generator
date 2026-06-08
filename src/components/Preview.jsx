@@ -1,5 +1,6 @@
 import { STATUS_OPTIONS } from '../data/kpis.js'
 import { buildMarkdown } from '../utils/buildMarkdown.js'
+import { renderMarkdown } from '../utils/renderMarkdown.jsx'
 import { Ico } from './Icons.jsx'
 
 export function Preview({ tab, setTab, parent, subKpis, formState, onClose, onCopy, onDownload, onPostGitlab }) {
@@ -88,9 +89,10 @@ function DocView({ parent, subKpis, formState }) {
               </p>
             )}
             {s.catatan && (
-              <p>
-                <strong>Catatan:</strong> {s.catatan}
-              </p>
+              <div className="kpi-catatan">
+                <strong>Catatan:</strong>
+                <div className="kpi-catatan-body">{renderMarkdown(s.catatan)}</div>
+              </div>
             )}
             {s.evidence && (
               <p>

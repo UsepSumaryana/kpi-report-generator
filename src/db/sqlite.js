@@ -6,12 +6,25 @@ const IDB_NAME = 'kpi-generator'
 const IDB_STORE = 'sqlite'
 const IDB_KEY = 'main.db'
 const SAVE_DEBOUNCE_MS = 250
+const IDB_TIMEOUT_MS = 5000
+const WASM_TIMEOUT_MS = 15000
 
 let SQL = null
 let db = null
 let saveTimer = null
 let savePromise = null
 let persistentGranted = null
+let idbAvailable = true
+
+function withTimeout(promise, ms, label) {
+  if (!ms) return promise
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label || 'Operation'} timed out after ${ms}ms`)), ms)
+    promise
+      .then((v) => { clearTimeout(timer); resolve(v) })
+      .catch((e) => { clearTimeout(timer); reject(e) })
+  })
+}
 
 function openIdb() {
   return new Promise((resolve, reject) => {
@@ -24,6 +37,11 @@ function openIdb() {
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
+    req.onblocked = () => {
+      // Another tab has the DB open with a higher version — close this request
+      try { req.result?.close() } catch (_) { /* ignore */ }
+      reject(new Error('IndexedDB blocked by another connection'))
+    }
   })
 }
 
@@ -35,6 +53,17 @@ async function idbGet(key) {
     req.onsuccess = () => resolve(req.result || null)
     req.onerror = () => reject(req.error)
   })
+}
+
+async function idbGetSafe(key) {
+  if (!idbAvailable) return null
+  try {
+    return await withTimeout(idbGet(key), IDB_TIMEOUT_MS, 'IndexedDB read')
+  } catch (e) {
+    console.warn('IndexedDB read failed, starting fresh:', e.message)
+    idbAvailable = false
+    return null
+  }
 }
 
 async function idbPut(key, value) {
@@ -134,8 +163,12 @@ function runMigrations() {
 
 export async function initDb() {
   if (db) return db
-  SQL = await initSqlJs({ locateFile: () => wasmUrl })
-  const existing = await idbGet(IDB_KEY)
+  SQL = await withTimeout(
+    initSqlJs({ locateFile: () => wasmUrl }),
+    WASM_TIMEOUT_MS,
+    'SQL.js WASM load'
+  )
+  const existing = await idbGetSafe(IDB_KEY)
   if (existing) {
     db = new SQL.Database(new Uint8Array(existing))
     runMigrations()
@@ -151,11 +184,14 @@ export async function initDb() {
 }
 
 function scheduleSave() {
+  if (!idbAvailable) return
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
     saveTimer = null
+    if (!idbAvailable) return
     savePromise = idbPut(IDB_KEY, db.export()).catch((e) => {
       console.error('idb save failed', e)
+      idbAvailable = false
     })
   }, SAVE_DEBOUNCE_MS)
 }
@@ -165,8 +201,14 @@ export async function flush() {
     clearTimeout(saveTimer)
     saveTimer = null
   }
-  savePromise = idbPut(IDB_KEY, db.export())
-  await savePromise
+  if (!idbAvailable) return
+  try {
+    savePromise = idbPut(IDB_KEY, db.export())
+    await savePromise
+  } catch (e) {
+    console.error('idb flush failed', e)
+    idbAvailable = false
+  }
 }
 
 export function getDb() {

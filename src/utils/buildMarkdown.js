@@ -25,7 +25,7 @@ export function buildMarkdown(parent, subKpis, formState, renderAttachment) {
       md += `**Status:** ${opt ? opt.label : s.status}\n\n`
     }
     if (s.catatan) {
-      md += `**Catatan:** ${s.catatan}\n\n`
+      md += `**Catatan:**\n\n${s.catatan}\n\n`
     }
     if (s.evidence) {
       md += `**Evidence/Lampiran:** ${s.evidence}\n\n`
